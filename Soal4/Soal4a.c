@@ -1,59 +1,81 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <unistd.h>
+#define LENGTH 2
+#define WIDTH 4
+#define WIDTH1 5
+#define MAX_THREAD 4
 
-int matriksA[4][2] = {{1, 2}, 
-		  {3, 4}, 
-		  {1, 1},
-		  {1, 6}};
-int matriksB[2][5] = {{5, 6, 7, 8, 1},
-		  {9, 1, 8, 1, 1}};
-int matriksC[4][5];
+int matrixA[WIDTH][LENGTH];
+int matrixB[LENGTH][WIDTH1];
+int (*matrixC)[WIDTH1] = 0;
 
-struct matriks
-{
-    int i;
-    int j; 
-};
-
-void *kali(void *arg)
-{
-	while(stat!=2)	{
-	}
-	int i, j, k;
-	for(i=0;i<b1;i++){
-		for(j=0;j<k2;j++){
-			for(k=0;k<k1;k++)
-				ans[i][j]+=m1[i][k] * m2[k][j];
-		}
-	}
-	return NULL;
+void* kali(void* arg){
+    int i, j, k;
+    for (i = 0 ; i < WIDTH; i++) {
+        for (j = 0; j < WIDTH1; j++) {  
+            for (k = 0; k < LENGTH; k++) {
+                matrixC[i][j] += matrixA[i][k] * matrixB[k][j];
+                // printf("%d||", matrixC[i][j]);
+            }
+            // printf("--%d--", matrixC[i][j]);
+        }
+    }
 }
-
-int main(int argc, char **argv)
-{
-    int i, j ,n = 0,cnt = 0, *nilai;
+int main(){
     key_t key = 1234;
+    int shmid = shmget(key, sizeof(int[WIDTH][WIDTH1]), IPC_CREAT | 0666);
+    matrixC = shmat(shmid, NULL, 0);
+    for (int i = 0; i < WIDTH; i++) { 
+        for (int j = 0; j < LENGTH; j++) { 
+            matrixA[i][j] = (j+1);
+        } 
+    }
 
-    printf ("Matriks A\n");
-    for (i = 0; i < 4; i++){
-	for (j = 0; j < 2; j++){
-        printf ("%d\t", matriksA[i][j]);
-    }
-	printf("\n");
+    for (int i = 0; i < LENGTH; i++) { 
+        for (int j = 0; j < WIDTH1; j++) { 
+            matrixB[i][j] = (j+1);
+        } 
+    } 
+
+    printf("Matrix A:\n");
+    for (int i = 0; i < WIDTH; i++) { 
+        for (int j = 0; j < LENGTH; j++)  
+            printf("%d ",matrixA[i][j]);
+        printf("\n");
+    } 
+  
+    printf("Matrix B:\n");
+    for (int i = 0; i < LENGTH; i++) { 
+        for (int j = 0; j < WIDTH1; j++)  
+            printf("%d ",matrixB[i][j]);
+        printf("\n");
     }
 
-    printf ("\nMatriks B\n");
-    for (i = 0; i < 2; i++){
-	for (j = 0; j < 5; j++){
-        printf ("%d\t", matriksB[i][j]);
-    }
-	printf("\n");
-    }
-    
-    
-//BODO AH GATAU MALES PEN BELI TREK
-//SUSAH BAT SERIUS INI AJA BELOM KELAR NJER
+    pthread_t threads;
+
+    for (int i = 0; i < WIDTH; i++) {
+        for(int j = 0;j < WIDTH1; j++) {
+            matrixC[i][j] = 0;
+        }
+        pthread_create(&threads,NULL, kali, NULL);
+        pthread_join(threads, NULL); 
+    }    
+
+    printf("Hasil Perkalian:\n");
+    for (int i = 0; i < WIDTH; i++) { 
+        for (int j = 0; j < WIDTH1; j++)  
+            printf("%d ",matrixC[i][j]);
+        printf("\n");
+    } 
+
+    // shmdt(matrixC[WIDTH][WIDTH1]);
+    // shmctl(shmid, IPC_RMID, NULL);
+    return 0;
+}
